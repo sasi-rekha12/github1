@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Book CRUD App</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container py-5">
+
+  <h2 class="mb-4">Book Management</h2>
+
+  <!-- Form -->
+  <form id="bookForm" class="mb-4">
+    <input type="hidden" id="bookId" />
+    <div class="mb-3">
+      <input type="text" id="title" placeholder="Enter Book Title" class="form-control" required />
+    </div>
+    <div class="mb-3">
+      <input type="text" id="author" placeholder="Enter Author Name" class="form-control" required />
+    </div>
+    <button type="submit" class="btn btn-primary">Save Book</button>
+    <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear</button>
+  </form>
+
+  <!-- Table -->
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>ID</th><th>Title</th><th>Author</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="bookTableBody"></tbody>
+  </table>
+
+  <button class="btn btn-danger mt-3" onclick="deleteAllBooks()">Delete All Books</button>
+
+  <script>
+    const API_BASE = '/api';
+
+    async function fetchBooks() {
+      const res = await fetch(`${API_BASE}/getAllBooks`);
+      if (res.ok) {
+        const books = await res.json();
+        const table = document.getElementById("bookTableBody");
+        table.innerHTML = '';
+        books.forEach(book => {
+          table.innerHTML += `
+            <tr>
+              <td>${book.id}</td>
+              <td>${book.title}</td>
+              <td>${book.author}</td>
+              <td>
+                <button class="btn btn-sm btn-info" onclick="editBook(${book.id})">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteBook(${book.id})">Delete</button>
+              </td>
+            </tr>
+          `;
+        });
+      } else {
+        alert('Failed to load books');
+      }
+    }
+
+    async function editBook(id) {
+      const res = await fetch(`${API_BASE}/getBookById/${id}`);
+      if (res.ok) {
+        const book = await res.json();
+        document.getElementById("bookId").value = book.id;
+        document.getElementById("title").value = book.title;
+        document.getElementById("author").value = book.author;
+      } else {
+        alert('Book not found');
+      }
+    }
+
+    async function deleteBook(id) {
+      const res = await fetch(`${API_BASE}/deleteBookById/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchBooks();
+      } else {
+        alert('Error deleting book');
+      }
+    }
+
+    async function deleteAllBooks() {
+      const confirmed = confirm("Are you sure you want to delete all books?");
+      if (!confirmed) return;
+
+      const res = await fetch(`${API_BASE}/deleteAllBooks`, { method: 'DELETE' });
+      if (res.ok || res.status === 204) {
+        fetchBooks();
+      } else {
+        alert('Error deleting all books');
+      }
+    }
+
+    async function saveBook(event) {
+      event.preventDefault();
+      const id = document.getElementById("bookId").value;
+      const title = document.getElementById("title").value;
+      const author = document.getElementById("author").value;
+
+      const payload = JSON.stringify({ title, author });
+
+      if (id) {
+        const res = await fetch(`${API_BASE}/updateBook/${id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload
+        });
+        if (res.ok) {
+          clearForm();
+          fetchBooks();
+        } else {
+          alert('Update failed');
+        }
+      } else {
+        const res = await fetch(`${API_BASE}/addBook`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload
+        });
+        if (res.ok) {
+          clearForm();
+          fetchBooks();
+        } else {
+          alert('Creation failed');
+        }
+      }
+    }
+
+    function clearForm() {
+      document.getElementById("bookId").value = '';
+      document.getElementById("bookForm").reset();
+    }
+
+    document.getElementById("bookForm").addEventListener("submit", saveBook);
+    fetchBooks();
+  </script>
+
+</body>
+</html>
